@@ -8,6 +8,8 @@ struct SCMatrix{T, M<:AbstractMatrix{T}} <: AbstractMatrix{T}
   A::M
   blocks::Vector{UnitRange{Int64}}
 end
+Base.getindex(A::SCMatrix, i, j) = A.A[i, j]
+Base.setindex!(A::SCMatrix, v, i, j) = A.A[i, j] = v
  
 struct SCMatrixFactorisation{T, M<:AbstractMatrix{T},U} <: AbstractMatrix{T}
   A::SCMatrix{T,M}
@@ -43,6 +45,12 @@ function LinearAlgebra.ldiv!(x::AbstractArray, F::SCMatrixFactorisation{T,M}, b:
     c == 1 && continue
     x[i, :] .-= F.lus[c] \ F.A.A[i, F.A.blocks[c-1]] * x[F.A.blocks[c-1], :]
   end
+  return x
+end
+function LinearAlgebra.:\(A::SCMatrixFactorisation{T,M}, b::AbstractVecOrMat
+    ) where {T,M}
+  x = similar(b)
+  ldiv!(x, A, b)
   return x
 end
 
