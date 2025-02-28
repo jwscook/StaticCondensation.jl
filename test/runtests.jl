@@ -52,7 +52,7 @@ luS12 = lu!(A11)
 y = [α; β; γ; δ]
 
 # Verify solution
-@testset "Static Condenstation" begin
+@testset "Static Condenstation logic" begin
   @test x[0S+1:1S] ≈ α
   @test x[1S+1:2S] ≈ β
   @test x[2S+1:3S] ≈ γ
@@ -60,8 +60,10 @@ y = [α; β; γ; δ]
   @test A * y ≈ rhs # Check residual
 end
 
+@testset "Static Condenstation implementation" begin
 SC = SCMatrix(A, [0S+1:1S, 1S+1:2S, 2S+1:3S, 3S+1:4S])
 SCf = factorise!(SC)
 z = zeros(size(x))
 ldiv!(z, SCf, rhs)
 @test z ≈ x
+end
