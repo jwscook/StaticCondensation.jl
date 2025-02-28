@@ -1,0 +1,1 @@
+# StaticCondensation.jl
