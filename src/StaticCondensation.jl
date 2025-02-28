@@ -7,6 +7,11 @@ export SCMatrix, SCMatrixFactorisation, factorise!
 struct SCMatrix{T, M<:AbstractMatrix{T}} <: AbstractMatrix{T}
   A::M
   blocks::Vector{UnitRange{Int64}}
+  work::M
+  function SCMatrix(A::M, blocks) where M<:AbstractMatrix
+    work = similar(A, maximum(length.(blocks)), maximum(length.(blocks)))
+    return new{eltype(M), M}(A, blocks, work)
+  end
 end
 Base.getindex(A::SCMatrix, i, j) = A.A[i, j]
 Base.setindex!(A::SCMatrix, v, i, j) = A.A[i, j] = v
@@ -18,7 +23,7 @@ end
 Base.size(SC::SCMatrix) = size(SC.A)
 Base.size(SC::SCMatrix, i) = size(SC.A, i)
 
-function factorise!(A::SCMatrix)
+function factorise!(A::SCMatrix{T}) where T
   i = A.blocks[end]
   lun = lu!(view(A.A, i, i))
   lus = Vector{typeof(lun)}(undef, length(A.blocks))
@@ -27,7 +32,12 @@ function factorise!(A::SCMatrix)
     ci == 1 && continue
     c = length(A.blocks) - ci + 1
     i1 = A.blocks[c+1]
-    @views A.A[i, i] .-= A.A[i, i1] * (lus[c+1] \ A.A[i1, i])
+    ldiv!(view(A.work, 1:length(i), 1:length(i)), lus[c+1], A.A[i1, i])
+    @views mul!(A.A[i, i],
+                A.A[i, i1],
+                view(A.work, 1:length(i), 1:length(i)),
+                -one(T),
+                one(T))
     lus[c] = lu!(view(A.A, i, i))
   end
   return SCMatrixFactorisation(A, lus)
@@ -39,11 +49,13 @@ function LinearAlgebra.ldiv!(x::AbstractArray, F::SCMatrixFactorisation{T,M}, b:
   @views for (ci, i) in enumerate(reverse(F.A.blocks))
     ci == 1 && continue
     c = length(F.A.blocks) - ci + 1
-    x[i, :] .= F.lus[c] \ (b[i, :]  .- F.A.A[i, F.A.blocks[c+1]] * x[F.A.blocks[c+1], :])
+    mul!(x[i, :], F.A.A[i, F.A.blocks[c+1]], x[F.A.blocks[c+1], :])
+    x[i, :] .= b[i, :] .- x[i, :]
+    ldiv!(x[i, :], F.lus[c], x[i, :])
   end
   @views for (c, i) in enumerate(F.A.blocks)
     c == 1 && continue
-    x[i, :] .-= F.lus[c] \ F.A.A[i, F.A.blocks[c-1]] * x[F.A.blocks[c-1], :]
+    x[i, :] .-= F.lus[c] \ (F.A.A[i, F.A.blocks[c-1]] * x[F.A.blocks[c-1], :])
   end
   return x
 end
