@@ -55,7 +55,10 @@ function LinearAlgebra.ldiv!(x::AbstractArray, F::SCMatrixFactorisation{T,M}, b:
   end
   @views for (c, i) in enumerate(F.A.blocks)
     c == 1 && continue
-    x[i, :] .-= F.lus[c] \ (F.A.A[i, F.A.blocks[c-1]] * x[F.A.blocks[c-1], :])
+    tmp = view(F.A.work, 1:length(i), 1:size(x, 2))
+    mul!(tmp, F.A.A[i, F.A.blocks[c-1]], x[F.A.blocks[c-1], :])
+    ldiv!(F.lus[c], tmp)
+    x[i, :] .-= tmp
   end
   return x
 end
