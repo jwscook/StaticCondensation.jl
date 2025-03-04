@@ -66,4 +66,6 @@ SCf = factorise!(SC)
 z = zeros(size(x))
 ldiv!(z, SCf, rhs)
 @test z ≈ x
+ldiv!(SCf, rhs)
+@test rhs ≈ x
 end

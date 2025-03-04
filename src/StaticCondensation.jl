@@ -43,22 +43,28 @@ function factorise!(A::SCMatrix{T}) where T
   return SCMatrixFactorisation(A, lus)
 end
 
+LinearAlgebra.ldiv!(A::SCMatrix{T,M}, b::AbstractArray) where {T,M} = ldiv!(fatorise!(A), b)
+LinearAlgebra.ldiv!(x::AbstractArray, A::SCMatrix{T,M}, b::AbstractArray) where {T,M} = ldiv!(x, factorise!(A), b)
+LinearAlgebra.ldiv!(F::SCMatrixFactorisation{T,M}, b::AbstractArray) where {T,M} = ldiv!(b, F, deepcopy(b))
 function LinearAlgebra.ldiv!(x::AbstractArray, F::SCMatrixFactorisation{T,M}, b::AbstractArray) where {T,M}
   i = F.A.blocks[end]
   view(x, i, :) .= F.lus[end] \ view(b, i, :)
   @views for (ci, i) in enumerate(reverse(F.A.blocks))
     ci == 1 && continue
+    xi = view(x, i, :)
+    bi = view(b, i, :)
     c = length(F.A.blocks) - ci + 1
-    mul!(x[i, :], F.A.A[i, F.A.blocks[c+1]], x[F.A.blocks[c+1], :])
-    x[i, :] .= b[i, :] .- x[i, :]
-    ldiv!(x[i, :], F.lus[c], x[i, :])
+    mul!(xi, F.A.A[i, F.A.blocks[c+1]], x[F.A.blocks[c+1], :])
+    xi .= bi .- xi
+    ldiv!(xi, F.lus[c], xi)
   end
   @views for (c, i) in enumerate(F.A.blocks)
     c == 1 && continue
+    xi = view(x, i, :)
     tmp = view(F.A.work, 1:length(i), 1:size(x, 2))
     mul!(tmp, F.A.A[i, F.A.blocks[c-1]], x[F.A.blocks[c-1], :])
     ldiv!(F.lus[c], tmp)
-    x[i, :] .-= tmp
+    BLAS.axpy!(-one(T), tmp, xi)
   end
   return x
 end
