@@ -30,7 +30,7 @@ struct SCMatrix{T, M<:AbstractMatrix{T}, C<:AbstractContext} <: AbstractMatrix{T
   work::M
   context::C
   function SCMatrix(A::M, blocks; context=SerialContext()) where M<:AbstractMatrix
-    work = zeros(eltype(A), maximum(length.(blocks)), maximum(length.(blocks)))
+    work = similar(A, maximum(length.(blocks)), maximum(length.(blocks)))
     return new{eltype(M), M, typeof(context)}(A, blocks, work, context)
   end
 end
