@@ -24,6 +24,9 @@ struct MPIContext{T<:AbstractMPI, C} <: AbstractContext
 end
 (con::MPIContext)() = MPI.Barrier(con.comm)
 
+free(con::MPIContext{<:DistributedMemoryMPI}) = MPI.free(con.mpitype.win)
+free(x) = nothing
+
 struct SCMatrix{T, M<:AbstractMatrix{T}, C<:AbstractContext} <: AbstractMatrix{T}
   A::M
   blocks::Vector{UnitRange{Int64}}
@@ -37,6 +40,8 @@ struct SCMatrix{T, M<:AbstractMatrix{T}, C<:AbstractContext} <: AbstractMatrix{T
 end
 Base.getindex(A::SCMatrix, i, j) = A.A[i, j]
 Base.setindex!(A::SCMatrix, v, i, j) = A.A[i, j] = v
+
+free(A::SCMatrix) = free(A.context)
  
 struct SCMatrixFactorisation{T, M<:AbstractMatrix{T},U} <: AbstractMatrix{T}
   A::SCMatrix{T,M}
@@ -44,6 +49,8 @@ struct SCMatrixFactorisation{T, M<:AbstractMatrix{T},U} <: AbstractMatrix{T}
 end
 Base.size(SC::SCMatrix) = size(SC.A)
 Base.size(SC::SCMatrix, i) = size(SC.A, i)
+
+free(A::SCMatrixFactorisation) = free(A.A)
 
 mulwrapper!(C, A, B, α, β, ::SerialContext) = mul!(C, A, B, α, β)
 mulwrapper!(C, A, B, ::SerialContext) = mul!(C, A, B)

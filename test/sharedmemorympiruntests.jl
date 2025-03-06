@@ -34,6 +34,7 @@ using StatProfilerHTML
   ldiv!(SCf, rhs)
   @test rhs ≈ x
   @time ldiv!(z, SCf, rhs)
+  StaticCondensation.free(SCf)
 end
 
 MPI.Finalize()
